@@ -1,7 +1,7 @@
 import { type ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
-import { Backdrop, HeaderSwoop, Logo } from './Brand';
+import { Backdrop, HeaderWave, Logo } from './Brand';
 
 export { Logo };
 
@@ -32,7 +32,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   return (
     <div className="relative min-h-screen">
       <Backdrop />
-      <header className="sticky top-0 z-30 bg-panel/95 shadow-[0_1px_0_rgba(0,0,0,0.04)]">
+      <header className="sticky top-0 z-30 bg-panel">
         <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-2.5">
           <Logo />
           {isDev && <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-black">Dev</span>}
@@ -44,7 +44,7 @@ export default function Layout({ children }: { children: ReactNode }) {
             <button onClick={logout} className="rounded-full px-3 py-2 text-sm text-ink/60 hover:bg-ink/5 hover:text-ink">Sign out</button>
           </div>
         </div>
-        <HeaderSwoop />
+        <HeaderWave />
       </header>
 
       <main className="relative mx-auto max-w-5xl px-4 pb-28 pt-5 md:pb-10 md:pt-6">{children}</main>

@@ -87,18 +87,39 @@ export function Backdrop() {
   );
 }
 
-// Thin brand stroke under the header.
-export function HeaderSwoop() {
+// The header's bottom edge: a travelling wave. The panel colour fills down to the wave
+// (so the header itself ends in a wave) and a brand-gradient stroke rides along it.
+// The path spans two screens and slides left by exactly one (two wave periods), and
+// the gradient repeats on the same 1440 period, so the loop is seamless.
+const WAVE_PERIOD = 720;
+const WAVE_MID = 9;
+const WAVE_AMP = 6;
+const wavePath = (() => {
+  let d = `M0,${WAVE_MID}`;
+  for (let x = 0; x < 2880; x += WAVE_PERIOD / 2) {
+    const up = (x / (WAVE_PERIOD / 2)) % 2 === 0;
+    d += ` Q${x + WAVE_PERIOD / 4},${WAVE_MID + (up ? -2 : 2) * WAVE_AMP} ${x + WAVE_PERIOD / 2},${WAVE_MID}`;
+  }
+  return d;
+})();
+
+export function HeaderWave() {
   return (
-    <svg aria-hidden className="block h-3 w-full" viewBox="0 0 1440 24" preserveAspectRatio="none">
-      <defs>
-        <linearGradient id="hdr" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stopColor="#194073" />
-          <stop offset="0.55" stopColor="#2DB091" />
-          <stop offset="1" stopColor="#83DBC2" />
-        </linearGradient>
-      </defs>
-      <path d="M0,4 C360,22 720,-6 1080,12 C1260,21 1360,14 1440,8" fill="none" stroke="url(#hdr)" strokeWidth="3" vectorEffect="non-scaling-stroke" />
-    </svg>
+    <div aria-hidden className="pointer-events-none absolute inset-x-0 top-full h-5 overflow-hidden">
+      <svg className="block h-full w-full" viewBox="0 0 1440 20" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="hdr-wave" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="1440" y2="0" spreadMethod="repeat">
+            <stop offset="0" stopColor="#194073" />
+            <stop offset="0.35" stopColor="#2DB091" />
+            <stop offset="0.65" stopColor="#83DBC2" />
+            <stop offset="1" stopColor="#194073" />
+          </linearGradient>
+        </defs>
+        <g className="wave-move">
+          <path d={`M0,0 L${wavePath.slice(1)} L2880,0 Z`} fill="var(--panel)" />
+          <path d={wavePath} fill="none" stroke="url(#hdr-wave)" strokeWidth="2.5" vectorEffect="non-scaling-stroke" />
+        </g>
+      </svg>
+    </div>
   );
 }

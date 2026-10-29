@@ -95,8 +95,11 @@ input[type="checkbox"] { accent-color: var(--accent); }
 @keyframes drift-a { from { transform: translate3d(-24px, 0, 0); } to { transform: translate3d(24px, -14px, 0); } }
 @keyframes drift-b { from { transform: translate3d(18px, 8px, 0); } to { transform: translate3d(-22px, -6px, 0); } }
 @keyframes flow { to { stroke-dashoffset: -1000; } }
+/* Header wave: slide one 1440-unit screen (two wave periods) for a seamless loop. */
+.wave-move { animation: wave-move 16s linear infinite; }
+@keyframes wave-move { to { transform: translateX(-1440px); } }
 @media (prefers-reduced-motion: reduce) {
-  .drift-a, .drift-b, .flow, .flow-slow { animation: none; }
+  .drift-a, .drift-b, .flow, .flow-slow, .wave-move { animation: none; }
 }
 
 /* In the utilities layer so it never overrides a padding utility on the same element. */

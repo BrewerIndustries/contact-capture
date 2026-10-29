@@ -219,15 +219,17 @@ function primaryEmail(fields: Field[], data: Record<string, unknown>): string | 
 
 const CONTACT_SELECT = `
   SELECT ct.*, cu.email AS created_by_email, cu.display_name AS created_by_name,
-         uu.email AS updated_by_email, uu.display_name AS updated_by_name
+         uu.email AS updated_by_email, uu.display_name AS updated_by_name, ev.name AS event_name
   FROM contacts ct
   LEFT JOIN users cu ON cu.id = ct.created_by
-  LEFT JOIN users uu ON uu.id = ct.updated_by`;
+  LEFT JOIN users uu ON uu.id = ct.updated_by
+  LEFT JOIN events ev ON ev.id = ct.event_id`;
 
 function publicContact(r: any) {
   return {
     id: r.id,
     data: JSON.parse(r.data),
+    event: r.event_id ? { id: r.event_id, name: r.event_name } : null,
     created_by: { id: r.created_by, email: r.created_by_email, name: r.created_by_name },
     created_at: r.created_at,
     updated_by: r.updated_by ? { id: r.updated_by, email: r.updated_by_email, name: r.updated_by_name } : null,
@@ -241,6 +243,42 @@ async function duplicates(c: any, email: string | null, excludeId = '') {
     `${CONTACT_SELECT} WHERE ct.email = ? AND ct.deleted_at IS NULL AND ct.id != ? ORDER BY ct.created_at DESC LIMIT 5`,
   ).bind(email, excludeId).all();
   return results.map(publicContact);
+}
+
+// ---------------- events ----------------
+async function allEvents(c: any) {
+  const { results } = await c.env.DB.prepare('SELECT id, name, active, created_at FROM events ORDER BY created_at DESC').all();
+  return results.map((r: any) => ({ ...r, active: Boolean(r.active) }));
+}
+
+async function defaultEventId(c: any): Promise<string | null> {
+  const row = await c.env.DB.prepare(
+    'SELECT s.default_event_id AS id FROM app_settings s JOIN events e ON e.id = s.default_event_id WHERE s.id = 1 AND e.active = 1',
+  ).first();
+  return (row?.id as string) ?? null;
+}
+
+async function activeEventId(c: any, id: unknown): Promise<string | null> {
+  if (typeof id !== 'string' || !id) return null;
+  const row = await c.env.DB.prepare('SELECT id FROM events WHERE id = ? AND active = 1').bind(id).first();
+  return (row?.id as string) ?? null;
+}
+
+// The user's chosen event if it's still active, otherwise the default.
+async function effectiveEventId(c: any, userId: string): Promise<string | null> {
+  const row = await c.env.DB.prepare('SELECT event_id FROM users WHERE id = ?').bind(userId).first();
+  return (await activeEventId(c, row?.event_id)) ?? (await defaultEventId(c));
+}
+
+async function eventsPayload(c: any) {
+  const me = c.get('user');
+  const row = await c.env.DB.prepare('SELECT event_id FROM users WHERE id = ?').bind(me.id).first();
+  return {
+    events: await allEvents(c),
+    default_event_id: await defaultEventId(c),
+    my_choice: (await activeEventId(c, row?.event_id)) ?? null,   // null = following the default
+    my_event_id: await effectiveEventId(c, me.id),
+  };
 }
 
 // ---------------- health ----------------
@@ -422,6 +460,71 @@ app.delete('/fields/:id', auth, requireAdmin, async (c) => {
   return c.json({ fields: await allFields(c) });
 });
 
+app.get('/events', auth, async (c) => c.json(await eventsPayload(c)));
+
+app.post('/events', auth, requireAdmin, async (c) => {
+  const b = await c.req.json().catch(() => ({} as any));
+  const name = String(b.name ?? '').trim().slice(0, 80);
+  if (!name) return c.json({ error: 'event name is required' }, 400);
+  const id = crypto.randomUUID().slice(0, 8);
+  const stmts = [c.env.DB.prepare('INSERT INTO events (id, name, active, created_at) VALUES (?,?,1,?)').bind(id, name, Date.now())];
+  // The first event becomes the default so capture works straight away.
+  if (b.make_default || !(await defaultEventId(c))) {
+    stmts.push(c.env.DB.prepare('UPDATE app_settings SET default_event_id = ? WHERE id = 1').bind(id));
+  }
+  await c.env.DB.batch(stmts);
+  return c.json(await eventsPayload(c));
+});
+
+app.patch('/events/:id', auth, requireAdmin, async (c) => {
+  const id = c.req.param('id');
+  const b = await c.req.json().catch(() => ({} as any));
+  const stmts: D1PreparedStatement[] = [];
+  if (b.name !== undefined) {
+    const name = String(b.name).trim().slice(0, 80);
+    if (!name) return c.json({ error: 'event name is required' }, 400);
+    stmts.push(c.env.DB.prepare('UPDATE events SET name = ? WHERE id = ?').bind(name, id));
+  }
+  if (b.active !== undefined) {
+    stmts.push(c.env.DB.prepare('UPDATE events SET active = ? WHERE id = ?').bind(b.active ? 1 : 0, id));
+    if (!b.active) {
+      stmts.push(c.env.DB.prepare('UPDATE app_settings SET default_event_id = NULL WHERE id = 1 AND default_event_id = ?').bind(id));
+    }
+  }
+  if (stmts.length) await c.env.DB.batch(stmts);
+  return c.json(await eventsPayload(c));
+});
+
+app.put('/events/default', auth, requireAdmin, async (c) => {
+  const b = await c.req.json().catch(() => ({} as any));
+  const id = b.event_id ? await activeEventId(c, b.event_id) : null;
+  if (b.event_id && !id) return c.json({ error: 'pick an active event' }, 400);
+  await c.env.DB.prepare('UPDATE app_settings SET default_event_id = ? WHERE id = 1').bind(id).run();
+  return c.json(await eventsPayload(c));
+});
+
+// Events with captured contacts can only be archived, so reports keep their label.
+app.delete('/events/:id', auth, requireAdmin, async (c) => {
+  const id = c.req.param('id');
+  const used = await c.env.DB.prepare('SELECT 1 FROM contacts WHERE event_id = ? LIMIT 1').bind(id).first();
+  if (used) return c.json({ error: 'this event has captured contacts — archive it instead' }, 409);
+  await c.env.DB.batch([
+    c.env.DB.prepare('UPDATE app_settings SET default_event_id = NULL WHERE id = 1 AND default_event_id = ?').bind(id),
+    c.env.DB.prepare('UPDATE users SET event_id = NULL WHERE event_id = ?').bind(id),
+    c.env.DB.prepare('DELETE FROM events WHERE id = ?').bind(id),
+  ]);
+  return c.json(await eventsPayload(c));
+});
+
+// A user's own event pick; null goes back to following the default.
+app.put('/me/event', auth, async (c) => {
+  const b = await c.req.json().catch(() => ({} as any));
+  const id = b.event_id ? await activeEventId(c, b.event_id) : null;
+  if (b.event_id && !id) return c.json({ error: 'pick an active event' }, 400);
+  await c.env.DB.prepare('UPDATE users SET event_id = ? WHERE id = ?').bind(id, c.get('user').id).run();
+  return c.json(await eventsPayload(c));
+});
+
 // ---------------- contacts ----------------
 app.get('/contacts/check', auth, async (c) => {
   const email = String(c.req.query('email') ?? '').trim().toLowerCase();
@@ -431,14 +534,16 @@ app.get('/contacts/check', auth, async (c) => {
 app.post('/contacts', auth, async (c) => {
   const me = c.get('user');
   const fields = await allFields(c);
-  const { data, error } = cleanValues(fields, (await c.req.json().catch(() => ({} as any))).data);
+  const body = await c.req.json().catch(() => ({} as any));
+  const { data, error } = cleanValues(fields, body.data);
   if (error) return c.json({ error }, 400);
+  const eventId = (await activeEventId(c, body.event_id)) ?? (await effectiveEventId(c, me.id));
   if (!Object.keys(data).some((k) => data[k] !== false)) return c.json({ error: 'fill in at least one field' }, 400);
   const email = primaryEmail(fields, data);
   const dupes = await duplicates(c, email);
   const id = crypto.randomUUID();
-  await c.env.DB.prepare('INSERT INTO contacts (id, data, email, created_by, created_at) VALUES (?,?,?,?,?)')
-    .bind(id, JSON.stringify(data), email, me.id, Date.now()).run();
+  await c.env.DB.prepare('INSERT INTO contacts (id, data, email, event_id, created_by, created_at) VALUES (?,?,?,?,?,?)')
+    .bind(id, JSON.stringify(data), email, eventId, me.id, Date.now()).run();
   const row = await c.env.DB.prepare(`${CONTACT_SELECT} WHERE ct.id = ?`).bind(id).first();
   return c.json({ contact: publicContact(row), duplicates: dupes });
 });
@@ -450,6 +555,8 @@ app.get('/contacts', auth, async (c) => {
   const args: unknown[] = [];
   if (q.mine === '1') { where.push('ct.created_by = ?'); args.push(c.get('user').id); }
   if (q.by) { where.push('ct.created_by = ?'); args.push(q.by); }
+  if (q.event === 'none') where.push('ct.event_id IS NULL');
+  else if (q.event) { where.push('ct.event_id = ?'); args.push(q.event); }
   if (q.from) { where.push('ct.created_at >= ?'); args.push(Number(q.from)); }
   if (q.to) { where.push('ct.created_at < ?'); args.push(Number(q.to)); }
   if (q.q) { where.push('LOWER(ct.data) LIKE ?'); args.push(`%${q.q.toLowerCase()}%`); }
@@ -472,10 +579,21 @@ app.patch('/contacts/:id', auth, async (c) => {
   const { row, status } = await editable(c, id);
   if (!row) return c.json({ error: status === 403 ? 'you can only edit contacts you captured' : 'not found' }, status);
   const fields = await allFields(c);
-  const { data, error } = cleanValues(fields, (await c.req.json().catch(() => ({} as any))).data, JSON.parse(row.data));
+  const body = await c.req.json().catch(() => ({} as any));
+  const { data, error } = cleanValues(fields, body.data, JSON.parse(row.data));
   if (error) return c.json({ error }, 400);
-  await c.env.DB.prepare('UPDATE contacts SET data = ?, email = ?, updated_by = ?, updated_at = ? WHERE id = ?')
-    .bind(JSON.stringify(data), primaryEmail(fields, data), c.get('user').id, Date.now(), id).run();
+  // event_id: omitted = unchanged, null/'' = no event, otherwise must be an existing event.
+  let eventId = row.event_id ?? null;
+  if (body.event_id !== undefined) {
+    if (!body.event_id) eventId = null;
+    else {
+      const ev = await c.env.DB.prepare('SELECT id FROM events WHERE id = ?').bind(String(body.event_id)).first();
+      if (!ev) return c.json({ error: 'unknown event' }, 400);
+      eventId = ev.id;
+    }
+  }
+  await c.env.DB.prepare('UPDATE contacts SET data = ?, email = ?, event_id = ?, updated_by = ?, updated_at = ? WHERE id = ?')
+    .bind(JSON.stringify(data), primaryEmail(fields, data), eventId, c.get('user').id, Date.now(), id).run();
   const updated = await c.env.DB.prepare(`${CONTACT_SELECT} WHERE ct.id = ?`).bind(id).first();
   return c.json({ contact: publicContact(updated) });
 });
@@ -502,7 +620,7 @@ app.get('/capturers', auth, async (c) => {
 // ---------------- admin: users ----------------
 app.get('/admin/users', auth, requireAdmin, async (c) => {
   const { results } = await c.env.DB.prepare(
-    `SELECT u.id, u.email, u.role, u.display_name, u.active, u.created_at, u.last_login_at,
+    `SELECT u.id, u.email, u.role, u.display_name, u.active, u.created_at, u.last_login_at, u.event_id,
             (u.password_hash IS NOT NULL) AS joined,
             (SELECT MAX(expires_at) FROM tokens WHERE user_id = u.id AND kind = 'invite' AND used_at IS NULL) AS invite_expires_at,
             (SELECT COUNT(*) FROM contacts WHERE created_by = u.id AND deleted_at IS NULL) AS contacts
@@ -562,6 +680,11 @@ app.patch('/admin/users/:id', auth, requireAdmin, async (c) => {
     if (self) return c.json({ error: "you can't deactivate yourself" }, 400);
     stmts.push(c.env.DB.prepare('UPDATE users SET active = ? WHERE id = ?').bind(b.active ? 1 : 0, id));
     if (!b.active) stmts.push(c.env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(id));
+  }
+  if (b.event_id !== undefined) {
+    const ev = b.event_id ? await activeEventId(c, b.event_id) : null;
+    if (b.event_id && !ev) return c.json({ error: 'pick an active event' }, 400);
+    stmts.push(c.env.DB.prepare('UPDATE users SET event_id = ? WHERE id = ?').bind(ev, id));
   }
   if (b.display_name !== undefined) {
     stmts.push(c.env.DB.prepare('UPDATE users SET display_name = ? WHERE id = ?')

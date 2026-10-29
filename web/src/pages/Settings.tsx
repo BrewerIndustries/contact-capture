@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { api, type AdminUser, type Field, type FieldType, type InviteResult } from '../lib/api';
+import { api, type AdminUser, type EventsState, type Field, type FieldType, type InviteResult } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { Button, Card, ErrorNote, Input, Modal, Note, PasswordInput, inputCls, fmtDate } from '../components/ui';
 
@@ -13,10 +13,91 @@ export default function Settings() {
   const admin = user?.role === 'admin';
   return (
     <div className="space-y-6">
+      {admin && <EventsCard />}
       <FieldsCard admin={admin} />
       {admin && <UsersCard />}
       <AccountCard />
     </div>
+  );
+}
+
+// ---------------- events (admin) ----------------
+function EventsCard() {
+  const [st, setSt] = useState<EventsState | null>(null);
+  const [name, setName] = useState('');
+  const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => { api.events().then(setSt).catch((e) => setError(e.message)); }, []);
+  const run = (p: Promise<EventsState>) => p.then((s) => { setSt(s); setError(''); }).catch((e) => setError(e.message));
+
+  async function add(e: FormEvent) {
+    e.preventDefault();
+    if (!name.trim()) return;
+    await run(api.addEvent(name.trim()));
+    setName('');
+  }
+
+  if (!st) return <Card title="Events"><ErrorNote>{error}</ErrorNote></Card>;
+  const active = st.events.filter((e) => e.active);
+
+  return (
+    <Card title="Events">
+      <div className="space-y-4">
+        <label className="block max-w-sm">
+          <span className="mb-1 block text-xs font-medium text-ink/60">Default event</span>
+          <select className={inputCls} value={st.default_event_id || ''} onChange={(e) => run(api.setDefaultEvent(e.target.value || null))}>
+            <option value="">No event</option>
+            {active.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+          </select>
+          <span className="mt-1 block text-xs text-ink/50">Everyone captures to this unless they pick another event on the Capture tab.</span>
+        </label>
+        <ErrorNote>{error}</ErrorNote>
+        {st.events.length > 0 && (
+          <ul className="divide-y divide-ink/10">
+            {st.events.map((e) => (
+              <li key={e.id} className={`flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5 ${e.active ? '' : 'opacity-50'}`}>
+                <div className="min-w-0 flex-1 truncate text-sm font-medium">
+                  {e.name}
+                  {e.id === st.default_event_id && <span className="ml-2 rounded bg-accent/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider">Default</span>}
+                  {!e.active && <span className="ml-2 text-xs font-normal text-ink/50">archived</span>}
+                </div>
+                <div className="flex gap-1">
+                  {e.active && e.id !== st.default_event_id && (
+                    <button onClick={() => run(api.setDefaultEvent(e.id))} className="rounded-md px-2 py-1 text-xs text-accent hover:bg-accent/10">Make default</button>
+                  )}
+                  <button onClick={() => setRenaming({ id: e.id, name: e.name })} className="rounded-md px-2 py-1 text-xs text-ink/60 hover:bg-ink/5">Rename</button>
+                  <button onClick={() => run(api.updateEvent(e.id, { active: !e.active }))}
+                    className="rounded-md px-2 py-1 text-xs text-ink/60 hover:bg-ink/5">{e.active ? 'Archive' : 'Restore'}</button>
+                  <button onClick={() => confirm(`Delete "${e.name}"?`) && run(api.deleteEvent(e.id))}
+                    className="rounded-md px-2 py-1 text-xs text-red-500 hover:bg-red-500/10">Delete</button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        <form onSubmit={add} className="flex max-w-md gap-2">
+          <Input placeholder="New event name, e.g. Spring Expo 2027" value={name} onChange={(e) => setName(e.target.value)} />
+          <Button type="submit" disabled={!name.trim()} className="whitespace-nowrap">Add event</Button>
+        </form>
+        <p className="text-xs text-ink/50">Archived events drop out of the pickers but stay on contacts already captured. Only events with no contacts can be deleted.</p>
+      </div>
+      {renaming && (
+        <Modal title="Rename event" onClose={() => setRenaming(null)}>
+          <form className="space-y-3" onSubmit={async (e) => {
+            e.preventDefault();
+            await run(api.updateEvent(renaming.id, { name: renaming.name }));
+            setRenaming(null);
+          }}>
+            <Input autoFocus value={renaming.name} onChange={(e) => setRenaming({ ...renaming, name: e.target.value })} required />
+            <div className="flex gap-2">
+              <Button type="submit">Save</Button>
+              <Button type="button" variant="ghost" onClick={() => setRenaming(null)}>Cancel</Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+    </Card>
   );
 }
 
@@ -161,13 +242,14 @@ function FieldDialog({ field, types, onClose, onSaved }: {
 function UsersCard() {
   const { user: me } = useAuth();
   const [users, setUsers] = useState<AdminUser[]>([]);
+  const [events, setEvents] = useState<EventsState | null>(null);
   const [emailEnabled, setEmailEnabled] = useState(true);
   const [inviting, setInviting] = useState(false);
   const [result, setResult] = useState<(InviteResult & { email: string }) | null>(null);
   const [error, setError] = useState('');
 
   const load = () => api.users().then((r) => { setUsers(r.users); setEmailEnabled(r.email_enabled); }).catch((e) => setError(e.message));
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); api.events().then(setEvents).catch(() => {}); }, []);
 
   const act = (p: Promise<unknown>) => p.then(() => { setError(''); load(); }).catch((e) => setError(e.message));
 
@@ -208,6 +290,14 @@ function UsersCard() {
                   {u.display_name && `${u.email} · `}{status(u)} · {u.contacts} captured
                 </div>
               </div>
+              {events && u.active && (
+                <select aria-label={`Event for ${u.display_name || u.email}`} value={u.event_id || ''}
+                  onChange={(e) => act(api.updateUser(u.id, { event_id: e.target.value || null }))}
+                  className="max-w-44 rounded-md bg-field px-2 py-1 text-xs ring-1 ring-ink/15">
+                  <option value="">Event: default{defaultName(events) ? ` (${defaultName(events)})` : ''}</option>
+                  {events.events.filter((e) => e.active || e.id === u.event_id).map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+                </select>
+              )}
               {!self && (
                 <div className="flex flex-wrap gap-1">
                   {!u.joined && u.active && (
@@ -235,6 +325,8 @@ function UsersCard() {
     </Card>
   );
 }
+
+const defaultName = (st: EventsState) => st.events.find((e) => e.id === st.default_event_id)?.name || '';
 
 function InviteDialog({ onClose, onSent }: { onClose: () => void; onSent: (r: InviteResult & { email: string }) => void }) {
   const [email, setEmail] = useState('');

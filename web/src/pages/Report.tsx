@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { api, personName, type Contact, type Field } from '../lib/api';
+import { api, personName, type Contact, type Event, type Field } from '../lib/api';
 import ContactActions from '../components/ContactActions';
 import { Button, Card, ErrorNote, inputCls, fmtDate } from '../components/ui';
 
@@ -22,25 +22,28 @@ export default function Report() {
   const [people, setPeople] = useState<{ id: string; email: string; display_name: string | null }[]>([]);
   const [q, setQ] = useState('');
   const [by, setBy] = useState('');
+  const [event, setEvent] = useState('');
+  const [events, setEvents] = useState<Event[]>([]);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [error, setError] = useState('');
 
   const load = () =>
-    api.contacts({ q: q.trim(), by, from: dayStart(from), to: dayEnd(to) })
+    api.contacts({ q: q.trim(), by, event, from: dayStart(from), to: dayEnd(to) })
       .then((r) => { setRows(r); setError(''); })
       .catch((e) => setError(e.message));
 
   useEffect(() => {
     api.fields().then((r) => setFields(r.fields)).catch((e) => setError(e.message));
     api.capturers().then(setPeople).catch(() => {});
+    api.events().then((r) => setEvents(r.events)).catch(() => {});
   }, []);
 
   // Re-query as filters change; the search box waits for a pause in typing.
   useEffect(() => {
     const t = setTimeout(load, q ? 300 : 0);
     return () => clearTimeout(t);
-  }, [q, by, from, to]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [q, by, event, from, to]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Active fields first, then retired ones that still hold data in these rows.
   const columns = useMemo(() => {
@@ -50,9 +53,10 @@ export default function Report() {
 
   function exportCsv() {
     if (!rows) return;
-    const head = [...columns.map((f) => f.label + (f.active ? '' : ' (retired)')), 'Captured by', 'Captured by email', 'Captured at', 'Last edited by', 'Last edited at'];
+    const head = [...columns.map((f) => f.label + (f.active ? '' : ' (retired)')), 'Event', 'Captured by', 'Captured by email', 'Captured at', 'Last edited by', 'Last edited at'];
     const lines = rows.map((r) => [
       ...columns.map((f) => cell(r.data[f.id])),
+      r.event?.name || '',
       r.created_by.name || '', r.created_by.email || '',
       new Date(r.created_at).toISOString(),
       personName(r.updated_by), r.updated_at ? new Date(r.updated_at).toISOString() : '',
@@ -66,27 +70,32 @@ export default function Report() {
     URL.revokeObjectURL(a.href);
   }
 
-  const filtered = q || by || from || to;
+  const filtered = q || by || event || from || to;
 
   return (
     <div className="space-y-4">
       <Card title="Report" right={
         <Button onClick={exportCsv} disabled={!rows?.length}>Export CSV{rows ? ` (${rows.length})` : ''}</Button>
       }>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
-          <input className={`${inputCls} lg:col-span-2`} placeholder="Search any field…" value={q} onChange={(e) => setQ(e.target.value)} />
-          <select className={`${inputCls} lg:col-span-2`} value={by} onChange={(e) => setBy(e.target.value)}>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <input className={inputCls} placeholder="Search any field…" value={q} onChange={(e) => setQ(e.target.value)} />
+          <select className={inputCls} value={event} onChange={(e) => setEvent(e.target.value)}>
+            <option value="">Event: all</option>
+            {events.map((e) => <option key={e.id} value={e.id}>{e.name}{e.active ? '' : ' (archived)'}</option>)}
+            <option value="none">No event</option>
+          </select>
+          <select className={inputCls} value={by} onChange={(e) => setBy(e.target.value)}>
             <option value="">Captured by: anyone</option>
             {people.map((p) => <option key={p.id} value={p.id}>{p.display_name || p.email}</option>)}
           </select>
-          <div className="flex min-w-0 items-center gap-2 sm:col-span-2">
+          <div className="flex min-w-0 items-center gap-2">
             <input type="date" aria-label="From date" className={`${inputCls} min-w-0`} value={from} onChange={(e) => setFrom(e.target.value)} />
             <span className="text-ink/40">–</span>
             <input type="date" aria-label="To date" className={`${inputCls} min-w-0`} value={to} onChange={(e) => setTo(e.target.value)} />
           </div>
         </div>
         {filtered && (
-          <button className="mt-2 text-xs text-ink/50 hover:text-ink" onClick={() => { setQ(''); setBy(''); setFrom(''); setTo(''); }}>
+          <button className="mt-2 text-xs text-ink/50 hover:text-ink" onClick={() => { setQ(''); setBy(''); setEvent(''); setFrom(''); setTo(''); }}>
             Clear filters
           </button>
         )}
@@ -108,6 +117,7 @@ export default function Report() {
                     {f.label}{!f.active && <span className="ml-1 normal-case tracking-normal text-ink/40">(retired)</span>}
                   </th>
                 ))}
+                <th className="whitespace-nowrap px-3 py-2.5 font-semibold">Event</th>
                 <th className="whitespace-nowrap px-3 py-2.5 font-semibold">Captured by</th>
                 <th className="whitespace-nowrap px-3 py-2.5 font-semibold">Captured</th>
                 <th className="px-3 py-2.5" />
@@ -119,6 +129,7 @@ export default function Report() {
                   {columns.map((f) => (
                     <td key={f.id} className="max-w-64 px-3 py-2 break-words">{cell(r.data[f.id])}</td>
                   ))}
+                  <td className="whitespace-nowrap px-3 py-2">{r.event?.name || ''}</td>
                   <td className="whitespace-nowrap px-3 py-2">{personName(r.created_by)}</td>
                   <td className="whitespace-nowrap px-3 py-2 text-ink/60" title={r.updated_at ? `Edited ${fmtDate(r.updated_at)} by ${personName(r.updated_by)}` : undefined}>
                     {fmtDate(r.created_at)}{r.updated_at && <span className="ml-1 text-xs text-ink/40">(edited)</span>}

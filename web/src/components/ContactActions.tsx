@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import { api, type Contact, type Field } from '../lib/api';
+import { useEffect, useState } from 'react';
+import { api, type Contact, type Event, type Field } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import ContactForm from './ContactForm';
-import { Modal } from './ui';
+import { inputCls, Modal } from './ui';
 
 export const canEdit = (c: Contact, user: { id: string; role: string } | null) =>
   !!user && (user.role === 'admin' || c.created_by.id === user.id);
@@ -15,6 +15,11 @@ export default function ContactActions({ contact, fields, onChanged }: {
 }) {
   const { user } = useAuth();
   const [editing, setEditing] = useState(false);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [eventId, setEventId] = useState(contact.event?.id || '');
+  useEffect(() => {
+    if (editing) { setEventId(contact.event?.id || ''); api.events().then((r) => setEvents(r.events)).catch(() => {}); }
+  }, [editing, contact.event?.id]);
   if (!canEdit(contact, user)) return null;
 
   async function remove() {
@@ -35,10 +40,19 @@ export default function ContactActions({ contact, fields, onChanged }: {
       </div>
       {editing && (
         <Modal title="Edit contact" onClose={() => setEditing(false)}>
+          {(events.length > 0 || contact.event) && (
+            <label className="mb-4 block">
+              <span className="mb-1 block text-xs font-medium text-ink/60">Event</span>
+              <select className={inputCls} value={eventId} onChange={(e) => setEventId(e.target.value)}>
+                <option value="">No event</option>
+                {events.filter((e) => e.active || e.id === contact.event?.id).map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+              </select>
+            </label>
+          )}
           <ContactForm fields={fields} initial={contact.data} editingId={contact.id} submitLabel="Save changes"
             onCancel={() => setEditing(false)}
             onSubmit={async (data) => {
-              await api.updateContact(contact.id, data);
+              await api.updateContact(contact.id, data, eventId || null);
               setEditing(false);
               onChanged();
             }} />

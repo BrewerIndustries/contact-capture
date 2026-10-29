@@ -18,9 +18,19 @@ export type Values = Record<string, string | boolean>;
 
 export type Person = { id: string; email: string; name: string | null };
 
+export type Event = { id: string; name: string; active: boolean; created_at: number };
+
+export type EventsState = {
+  events: Event[];
+  default_event_id: string | null;
+  my_choice: string | null;      // null = following the default
+  my_event_id: string | null;    // what new captures get stamped with
+};
+
 export type Contact = {
   id: string;
   data: Values;
+  event: { id: string; name: string } | null;
   created_by: Person;
   created_at: number;
   updated_by: Person | null;
@@ -34,11 +44,12 @@ export type AdminUser = User & {
   last_login_at: number | null;
   invite_expires_at: number | null;
   contacts: number;
+  event_id: string | null;
 };
 
 export type InviteResult = { link: string; email_sent: boolean; email_error: string | null };
 
-export type ContactFilters = { q?: string; by?: string; from?: number; to?: number; mine?: boolean };
+export type ContactFilters = { q?: string; by?: string; event?: string; from?: number; to?: number; mine?: boolean };
 
 export class ApiError extends Error {
   status: number;
@@ -71,6 +82,7 @@ function qs(f: ContactFilters): string {
   const p = new URLSearchParams();
   if (f.q) p.set('q', f.q);
   if (f.by) p.set('by', f.by);
+  if (f.event) p.set('event', f.event);
   if (f.from) p.set('from', String(f.from));
   if (f.to) p.set('to', String(f.to));
   if (f.mine) p.set('mine', '1');
@@ -97,8 +109,16 @@ export const api = {
   deleteField: (id: string) => req<{ fields: Field[] }>(`/fields/${id}`, { method: 'DELETE' }).then((r) => r.fields),
 
   contacts: (f: ContactFilters = {}) => req<{ contacts: Contact[] }>(`/contacts${qs(f)}`).then((r) => r.contacts),
-  capture: (data: Values) => req<{ contact: Contact; duplicates: Contact[] }>('/contacts', json('POST', { data })),
-  updateContact: (id: string, data: Values) => req<{ contact: Contact }>(`/contacts/${id}`, json('PATCH', { data })).then((r) => r.contact),
+  capture: (data: Values, event_id: string | null) => req<{ contact: Contact; duplicates: Contact[] }>('/contacts', json('POST', { data, event_id })),
+  updateContact: (id: string, data: Values, event_id?: string | null) =>
+    req<{ contact: Contact }>(`/contacts/${id}`, json('PATCH', { data, event_id })).then((r) => r.contact),
+
+  events: () => req<EventsState>('/events'),
+  addEvent: (name: string, make_default = false) => req<EventsState>('/events', json('POST', { name, make_default })),
+  updateEvent: (id: string, d: { name?: string; active?: boolean }) => req<EventsState>(`/events/${id}`, json('PATCH', d)),
+  deleteEvent: (id: string) => req<EventsState>(`/events/${id}`, { method: 'DELETE' }),
+  setDefaultEvent: (event_id: string | null) => req<EventsState>('/events/default', json('PUT', { event_id })),
+  setMyEvent: (event_id: string | null) => req<EventsState>('/me/event', json('PUT', { event_id })),
   deleteContact: (id: string) => req<{ ok: true }>(`/contacts/${id}`, { method: 'DELETE' }),
   checkDuplicate: (email: string, exclude = '') =>
     req<{ duplicates: Contact[] }>(`/contacts/check?email=${encodeURIComponent(email)}&exclude=${encodeURIComponent(exclude)}`).then((r) => r.duplicates),
@@ -108,7 +128,7 @@ export const api = {
   inviteUser: (d: { email: string; role: string; display_name?: string }) =>
     req<InviteResult & { user: User }>('/admin/users', json('POST', d)),
   resendInvite: (id: string) => req<InviteResult>(`/admin/users/${id}/invite`, { method: 'POST' }),
-  updateUser: (id: string, d: { role?: string; active?: boolean; display_name?: string }) =>
+  updateUser: (id: string, d: { role?: string; active?: boolean; display_name?: string; event_id?: string | null }) =>
     req<{ ok: true }>(`/admin/users/${id}`, json('PATCH', d)),
   deleteUser: (id: string) => req<{ ok: true }>(`/admin/users/${id}`, { method: 'DELETE' }),
 };

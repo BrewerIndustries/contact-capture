@@ -13,8 +13,16 @@ and sees one shared report. Every entry records who captured it and who last edi
 | Tab | Who | What |
 |-----|-----|------|
 | **Contact Capture** | everyone | Event dropdown, the form (built from Settings), a duplicate-email warning, and "My captures" with edit/delete |
-| **Settings** | everyone / admins | Admins: events (default + list), fields (add, edit, reorder, hide, delete), and users (invite, role, per-user event, deactivate). Everyone: name + password |
+| **Settings** | everyone / admins | Admins: events (default + list), fields (add, edit, reorder, hide, delete), and users (invite, role, per-user event, deactivate). Everyone: name + password, Appearance (match device / light / dark, saved per device) |
 | **Report** | everyone | Every contact, with search, event, captured-by and date-range filters, plus CSV export (Excel-friendly UTF-8) |
+
+## Branding & mobile
+
+Ankobia Group brand: navy `#194073`/`#164773`, green `#2DB091`, mints `#50C9AA`/`#83DBC2` (tokens in `web/src/index.css`).
+The logo is `web/src/assets/ankobia-logo.png`, plus a generated white-wordmark copy for dark mode. The supplied
+`ankobia_logo_vector.svg` is a lossy trace with no letter counters, so don't use it. The icons in `web/public/` are drawn
+from the logo's dots and "i". `components/Brand.tsx` has the animated swoop/stroke backdrop (respects reduced motion).
+On phones there's a bottom tab bar, the Report shows cards instead of a table, and touch targets are larger.
 
 ## Rules worth knowing
 

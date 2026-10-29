@@ -6,22 +6,28 @@ and sees one shared report. Every entry records who captured it and who last edi
 - **Prod:** https://contacts.dabrewer.dev/ · API `https://contacts-api.dabrewer.dev`
 - **Dev:** https://contacts.dabrewer.dev/dev/ · API `https://contacts-api-dev.dabrewer.dev`
 
-> **Status (2026-10-29):** dev site + both APIs live. `main` doesn't exist yet; it gets created by the
-> first approved `dev → main` PR. Until then the site root redirects to `/dev/`.
+> **Status (2026-10-29):** dev site + dev API live with events. The prod API runs the v1 code (no events,
+> migration 0002 not applied). `main` doesn't exist yet; it gets created by the first approved `dev → main`
+> PR. Until then the site root redirects to `/dev/`. At promotion: `npm run migrate:prod && npm run deploy`.
 
 ## Tabs
 
 | Tab | Who | What |
 |-----|-----|------|
-| **Contact Capture** | everyone | The form (built from Settings), a duplicate-email warning, and "My captures" with edit/delete |
-| **Settings** | everyone / admins | Admins: add, edit, reorder, hide or delete fields, and invite or manage users. Everyone: name + password |
-| **Report** | everyone | Every contact, with search, captured-by and date-range filters, plus CSV export (Excel-friendly UTF-8) |
+| **Contact Capture** | everyone | Event dropdown, the form (built from Settings), a duplicate-email warning, and "My captures" with edit/delete |
+| **Settings** | everyone / admins | Admins: events (default + list), fields (add, edit, reorder, hide, delete), and users (invite, role, per-user event, deactivate). Everyone: name + password |
+| **Report** | everyone | Every contact, with search, event, captured-by and date-range filters, plus CSV export (Excel-friendly UTF-8) |
 
 ## Rules worth knowing
 
 - **Fields.** Base fields are Name, Email, Role, Organization. Types: text, email, phone, long text, dropdown,
   checkbox, date, number. **Hiding** a field drops it from the form but keeps its data, which the report
   shows as "(retired)". A field can only be **deleted** while it holds no data.
+- **Events.** Admins add, rename, archive or delete events and pick the **default**. Each user has a current event:
+  their own pick from the Capture tab, or one an admin sets from the Users list. With none set, it follows the default.
+  Every new contact is stamped with that event and can be changed in the edit dialog. The first event created becomes
+  the default. Archiving an event drops it from the pickers (users on it fall back to the default) but keeps it on
+  existing contacts. Only events with no contacts can be deleted.
 - **Contacts.** Users edit/delete their own; admins edit/delete any. Deletes are soft (`deleted_at`, `deleted_by`).
   Duplicate emails warn but don't block.
 - **Accounts are invite-only.** An admin enters an email under Settings → Users. The Worker emails a one-time link

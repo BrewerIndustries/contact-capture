@@ -6,6 +6,9 @@ and sees one shared report. Every entry records who captured it and who last edi
 - **Prod:** https://contacts.dabrewer.dev/ · API `https://contacts-api.dabrewer.dev`
 - **Dev:** https://contacts.dabrewer.dev/dev/ · API `https://contacts-api-dev.dabrewer.dev`
 
+> **Status (2026-10-29):** dev site + both APIs live. `main` doesn't exist yet; it gets created by the
+> first approved `dev → main` PR. Until then the site root redirects to `/dev/`.
+
 ## Tabs
 
 | Tab | Who | What |
@@ -52,7 +55,8 @@ cd ../web && npm install && npx vite                        # http://localhost:5
 
 ## Deploy
 
-- **Web:** push to `dev` → the Pages workflow builds `main` → `/` and `dev` → `/dev/`.
+- **Web:** push to `dev` → the Pages workflow builds `main` → `/` and `dev` → `/dev/`
+  (if `main` doesn't exist yet, `/` is a redirect to `/dev/`). The `github-pages` environment allows the `dev` branch.
   Promote to prod with a PR `dev → main`, then re-run the workflow (or push to dev).
 - **API:** `cd api && npm run deploy:dev` / `npm run deploy` (OAuth wrangler, so unset a DNS-only `CLOUDFLARE_API_TOKEN` first).
 - **Schema:** add `api/migrations/000N_*.sql`, then `npm run migrate:dev` / `npm run migrate:prod`.

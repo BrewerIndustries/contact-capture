@@ -3,11 +3,27 @@
   "name": "Contact Capture",
   "description": "Multi-user contact capture app: admin-configurable form fields, invite-by-email accounts, every entry stamped with who captured it, and a filterable report with CSV export. React + Vite on GitHub Pages backed by a Cloudflare Worker (Hono) + D1 + Cloudflare Email Sending.",
   "category": "standalone",
-  "tech": ["React 19", "Vite", "Tailwind CSS v4", "Cloudflare Workers", "Hono", "D1 (SQLite)", "Cloudflare Email Sending", "GitHub Pages"],
-  "status": { "prod": "live", "dev": "live" },
+  "tech": [
+    "React 19",
+    "Vite",
+    "Tailwind CSS v4",
+    "Cloudflare Workers",
+    "Hono",
+    "D1 (SQLite)",
+    "Cloudflare Email Sending",
+    "GitHub Pages"
+  ],
+  "status": {
+    "prod": "pending",
+    "dev": "live"
+  },
   "deploy": {
-    "prod": { "url": "https://contacts.dabrewer.dev/" },
-    "dev": { "url": "https://contacts.dabrewer.dev/dev/" }
+    "prod": {
+      "url": "https://contacts.dabrewer.dev/"
+    },
+    "dev": {
+      "url": "https://contacts.dabrewer.dev/dev/"
+    }
   },
   "repo": "https://github.com/BrewerIndustries/contact-capture"
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { api, type AdminUser, type EventsState, type Field, type FieldType, type InviteResult } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import { getTheme, setTheme, type Theme } from '../lib/theme';
 import { Button, Card, ErrorNote, Input, Modal, Note, PasswordInput, inputCls, fmtDate } from '../components/ui';
 
 const TYPE_LABELS: Record<FieldType, string> = {
@@ -17,6 +18,7 @@ export default function Settings() {
       <FieldsCard admin={admin} />
       {admin && <UsersCard />}
       <AccountCard />
+      <AppearanceCard />
     </div>
   );
 }
@@ -64,13 +66,13 @@ function EventsCard() {
                 </div>
                 <div className="flex gap-1">
                   {e.active && e.id !== st.default_event_id && (
-                    <button onClick={() => run(api.setDefaultEvent(e.id))} className="rounded-md px-2 py-1 text-xs text-accent hover:bg-accent/10">Make default</button>
+                    <button onClick={() => run(api.setDefaultEvent(e.id))} className="rounded-md px-3 py-2 text-sm sm:px-2 sm:py-1 sm:text-xs text-accent hover:bg-accent/10">Make default</button>
                   )}
-                  <button onClick={() => setRenaming({ id: e.id, name: e.name })} className="rounded-md px-2 py-1 text-xs text-ink/60 hover:bg-ink/5">Rename</button>
+                  <button onClick={() => setRenaming({ id: e.id, name: e.name })} className="rounded-md px-3 py-2 text-sm sm:px-2 sm:py-1 sm:text-xs text-ink/60 hover:bg-ink/5">Rename</button>
                   <button onClick={() => run(api.updateEvent(e.id, { active: !e.active }))}
-                    className="rounded-md px-2 py-1 text-xs text-ink/60 hover:bg-ink/5">{e.active ? 'Archive' : 'Restore'}</button>
+                    className="rounded-md px-3 py-2 text-sm sm:px-2 sm:py-1 sm:text-xs text-ink/60 hover:bg-ink/5">{e.active ? 'Archive' : 'Restore'}</button>
                   <button onClick={() => confirm(`Delete "${e.name}"?`) && run(api.deleteEvent(e.id))}
-                    className="rounded-md px-2 py-1 text-xs text-red-500 hover:bg-red-500/10">Delete</button>
+                    className="rounded-md px-3 py-2 text-sm sm:px-2 sm:py-1 sm:text-xs text-red-500 hover:bg-red-500/10">Delete</button>
                 </div>
               </li>
             ))}
@@ -131,9 +133,9 @@ function FieldsCard({ admin }: { admin: boolean }) {
             {admin && (
               <div className="flex flex-col">
                 <button disabled={i === 0} onClick={() => move(i, -1)} aria-label={`Move ${f.label} up`}
-                  className="px-1 text-xs leading-none text-ink/50 hover:text-ink disabled:opacity-20">▲</button>
+                  className="px-2 py-1 text-xs leading-none text-ink/50 hover:text-ink disabled:opacity-20">▲</button>
                 <button disabled={i === fields.length - 1} onClick={() => move(i, 1)} aria-label={`Move ${f.label} down`}
-                  className="px-1 text-xs leading-none text-ink/50 hover:text-ink disabled:opacity-20">▼</button>
+                  className="px-2 py-1 text-xs leading-none text-ink/50 hover:text-ink disabled:opacity-20">▼</button>
               </div>
             )}
             <div className="min-w-0 flex-1">
@@ -149,8 +151,8 @@ function FieldsCard({ admin }: { admin: boolean }) {
             {admin && (
               <div className="flex gap-1">
                 <button onClick={() => run(api.updateField(f.id, { active: !f.active }))}
-                  className="rounded-md px-2 py-1 text-xs text-ink/60 hover:bg-ink/5">{f.active ? 'Hide' : 'Show'}</button>
-                <button onClick={() => setEditing(f)} className="rounded-md px-2 py-1 text-xs text-accent hover:bg-accent/10">Edit</button>
+                  className="rounded-md px-3 py-2 text-sm sm:px-2 sm:py-1 sm:text-xs text-ink/60 hover:bg-ink/5">{f.active ? 'Hide' : 'Show'}</button>
+                <button onClick={() => setEditing(f)} className="rounded-md px-3 py-2 text-sm sm:px-2 sm:py-1 sm:text-xs text-accent hover:bg-accent/10">Edit</button>
               </div>
             )}
           </li>
@@ -301,15 +303,15 @@ function UsersCard() {
               {!self && (
                 <div className="flex flex-wrap gap-1">
                   {!u.joined && u.active && (
-                    <button onClick={() => resend(u)} className="rounded-md px-2 py-1 text-xs text-accent hover:bg-accent/10">Resend invite</button>
+                    <button onClick={() => resend(u)} className="rounded-md px-3 py-2 text-sm sm:px-2 sm:py-1 sm:text-xs text-accent hover:bg-accent/10">Resend invite</button>
                   )}
                   <button onClick={() => act(api.updateUser(u.id, { role: u.role === 'admin' ? 'user' : 'admin' }))}
-                    className="rounded-md px-2 py-1 text-xs text-ink/60 hover:bg-ink/5">{u.role === 'admin' ? 'Make user' : 'Make admin'}</button>
+                    className="rounded-md px-3 py-2 text-sm sm:px-2 sm:py-1 sm:text-xs text-ink/60 hover:bg-ink/5">{u.role === 'admin' ? 'Make user' : 'Make admin'}</button>
                   <button onClick={() => act(api.updateUser(u.id, { active: !u.active }))}
-                    className="rounded-md px-2 py-1 text-xs text-ink/60 hover:bg-ink/5">{u.active ? 'Deactivate' : 'Reactivate'}</button>
+                    className="rounded-md px-3 py-2 text-sm sm:px-2 sm:py-1 sm:text-xs text-ink/60 hover:bg-ink/5">{u.active ? 'Deactivate' : 'Reactivate'}</button>
                   {u.contacts === 0 && (
                     <button onClick={() => confirm(`Remove ${u.email} completely?`) && act(api.deleteUser(u.id))}
-                      className="rounded-md px-2 py-1 text-xs text-red-500 hover:bg-red-500/10">Remove</button>
+                      className="rounded-md px-3 py-2 text-sm sm:px-2 sm:py-1 sm:text-xs text-red-500 hover:bg-red-500/10">Remove</button>
                   )}
                 </div>
               )}
@@ -460,6 +462,28 @@ function AccountCard() {
         <ErrorNote>{error}</ErrorNote>
         {msg && <Note>{msg}</Note>}
       </div>
+    </Card>
+  );
+}
+
+// ---------------- appearance (everyone; saved per device) ----------------
+function AppearanceCard() {
+  const [theme, pick] = useState<Theme>(getTheme);
+  const opts: { v: Theme; label: string }[] = [
+    { v: 'system', label: 'Match device' }, { v: 'light', label: 'Light' }, { v: 'dark', label: 'Dark' },
+  ];
+  return (
+    <Card title="Appearance">
+      <div role="radiogroup" aria-label="Theme" className="inline-flex w-full rounded-xl bg-ink/5 p-1 sm:w-auto">
+        {opts.map((o) => (
+          <button key={o.v} role="radio" aria-checked={theme === o.v}
+            onClick={() => { setTheme(o.v); pick(o.v); }}
+            className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-medium transition sm:flex-none sm:py-2 ${theme === o.v ? 'bg-panel text-ink shadow-sm ring-1 ring-ink/10' : 'text-ink/60 hover:text-ink'}`}>
+            {o.label}
+          </button>
+        ))}
+      </div>
+      <p className="mt-2 text-xs text-ink/50">Saved on this device.</p>
     </Card>
   );
 }

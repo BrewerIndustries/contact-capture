@@ -14,7 +14,7 @@
     "GitHub Pages"
   ],
   "status": {
-    "prod": "pending",
+    "prod": "live",
     "dev": "live"
   },
   "deploy": {

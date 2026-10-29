@@ -108,7 +108,35 @@ export default function Report() {
       ) : !rows.length ? (
         <Card><p className="text-sm text-ink/50">{filtered ? 'Nothing matches those filters.' : 'No contacts captured yet.'}</p></Card>
       ) : (
-        <div className="overflow-x-auto rounded-2xl bg-panel ring-1 ring-ink/10">
+        <>
+        <ul className="space-y-3 sm:hidden">
+          {rows.map((r) => {
+            const [head, ...rest] = columns;
+            return (
+              <li key={r.id} className="rounded-2xl bg-panel p-4 shadow-sm ring-1 ring-ink/10">
+                <div className="flex items-start gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-semibold">{head ? cell(r.data[head.id]) || '(blank)' : ''}</div>
+                    {r.event && <div className="mt-0.5 text-xs font-medium text-accent">{r.event.name}</div>}
+                  </div>
+                  <ContactActions contact={r} fields={fields} onChanged={load} />
+                </div>
+                <dl className="mt-2 space-y-1 text-sm">
+                  {rest.filter((f) => cell(r.data[f.id])).map((f) => (
+                    <div key={f.id} className="flex gap-2">
+                      <dt className="w-28 shrink-0 text-ink/50">{f.label}</dt>
+                      <dd className="min-w-0 whitespace-pre-line break-words">{cell(r.data[f.id])}</dd>
+                    </div>
+                  ))}
+                </dl>
+                <div className="mt-2 text-xs text-ink/50">
+                  {personName(r.created_by)} · {fmtDate(r.created_at)}{r.updated_at && ' · edited'}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+        <div className="hidden overflow-x-auto rounded-2xl bg-panel shadow-sm ring-1 ring-ink/10 sm:block">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-ink/10 text-xs uppercase tracking-wider text-ink/50">
               <tr>
@@ -127,7 +155,7 @@ export default function Report() {
               {rows.map((r) => (
                 <tr key={r.id} className="align-top hover:bg-ink/[0.03]">
                   {columns.map((f) => (
-                    <td key={f.id} className="max-w-64 px-3 py-2 break-words">{cell(r.data[f.id])}</td>
+                    <td key={f.id} className="max-w-64 whitespace-pre-line px-3 py-2 break-words">{cell(r.data[f.id])}</td>
                   ))}
                   <td className="whitespace-nowrap px-3 py-2">{r.event?.name || ''}</td>
                   <td className="whitespace-nowrap px-3 py-2">{personName(r.created_by)}</td>
@@ -140,6 +168,7 @@ export default function Report() {
             </tbody>
           </table>
         </div>
+        </>
       )}
     </div>
   );

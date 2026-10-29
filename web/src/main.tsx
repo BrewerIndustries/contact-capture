@@ -3,7 +3,10 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from './lib/auth';
 import App from './App';
+import { applyTheme, getTheme } from './lib/theme';
 import './index.css';
+
+applyTheme(getTheme());
 
 // Router basename matches Vite's base ('/' prod, '/dev' dev) so deep links under
 // /dev/ resolve on GitHub Pages.

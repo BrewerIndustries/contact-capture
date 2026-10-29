@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
-import { Logo } from '../components/Layout';
+import { Backdrop, Logo } from '../components/Brand';
 import { Button, ErrorNote, Input, PasswordInput } from '../components/ui';
 
 // Landing page for invite links (/accept) and password-reset links (/reset).
@@ -43,13 +43,14 @@ export default function SetPassword({ kind }: { kind: 'invite' | 'reset' }) {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        <div className="mb-6 flex flex-col items-center gap-1 text-2xl">
-          <Logo />
+    <div className="relative flex min-h-screen items-center justify-center px-4 py-10">
+      <Backdrop />
+      <div className="relative w-full max-w-sm">
+        <div className="mb-6 flex flex-col items-center gap-2">
+          <Logo size="lg" />
           <p className="text-sm text-ink/50">{kind === 'invite' ? 'Create your account' : 'Choose a new password'}</p>
         </div>
-        <div className="rounded-2xl bg-panel p-6 ring-1 ring-ink/10">
+        <div className="rounded-2xl bg-panel p-6 shadow-lg ring-1 ring-ink/10">
           {dead ? (
             <div className="space-y-4">
               <ErrorNote>{dead}</ErrorNote>

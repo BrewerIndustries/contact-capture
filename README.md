@@ -6,21 +6,27 @@ and sees one shared report. Every entry records who captured it and who last edi
 - **Prod:** https://contacts.dabrewer.dev/ · API `https://contacts-api.dabrewer.dev`
 - **Dev:** https://contacts.dabrewer.dev/dev/ · API `https://contacts-api-dev.dabrewer.dev`
 
-> **Status (2026-10-29):** dev site + dev API live with events. The prod API runs the v1 code (no events,
-> migration 0002 not applied). `main` doesn't exist yet; it gets created by the first approved `dev → main`
-> PR. Until then the site root redirects to `/dev/`. At promotion: `npm run migrate:prod && npm run deploy`.
+> **Status (2026-10-29):** prod and dev are both live (sites + APIs, events included). Promote with a `dev → main` PR.
 
 ## Tabs
 
 | Tab | Who | What |
 |-----|-----|------|
 | **Contact Capture** | everyone | Event dropdown, the form (built from Settings), a duplicate-email warning, and "My captures" with edit/delete |
-| **Settings** | everyone / admins | Admins: events (default + list), fields (add, edit, reorder, hide, delete), and users (invite, role, per-user event, deactivate). Everyone: name + password |
+| **Settings** | everyone / admins | Admins: events (default + list), fields (add, edit, reorder, hide, delete), and users (invite, role, per-user event, deactivate). Everyone: name + password, Appearance (match device / light / dark, saved per device) |
 | **Report** | everyone | Every contact, with search, event, captured-by and date-range filters, plus CSV export (Excel-friendly UTF-8) |
+
+## Branding & mobile
+
+Ankobia Group brand: navy `#194073`/`#164773`, green `#2DB091`, mints `#50C9AA`/`#83DBC2` (tokens in `web/src/index.css`).
+The logo is `web/src/assets/ankobia-logo.png`, plus a generated white-wordmark copy for dark mode. The supplied
+`ankobia_logo_vector.svg` is a lossy trace with no letter counters, so don't use it. The icons in `web/public/` are drawn
+from the logo's dots and "i". `components/Brand.tsx` has the animated swoop/stroke backdrop (respects reduced motion).
+On phones there's a bottom tab bar, the Report shows cards instead of a table, and touch targets are larger.
 
 ## Rules worth knowing
 
-- **Fields.** Base fields are Name, Email, Role, Organization. Types: text, email, phone, long text, dropdown,
+- **Fields.** Base fields are Name, Email, Role, Organization, Notes (long text, added in migration 0003). Types: text, email, phone, long text, dropdown,
   checkbox, date, number. **Hiding** a field drops it from the form but keeps its data, which the report
   shows as "(retired)". A field can only be **deleted** while it holds no data.
 - **Events.** Admins add, rename, archive or delete events and pick the **default**. Each user has a current event:

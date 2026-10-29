@@ -35,19 +35,19 @@ export function PasswordInput(props: Omit<InputHTMLAttributes<HTMLInputElement>,
 export function Button({ variant = 'primary', className = '', ...rest }:
   ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'ghost' | 'danger' }) {
   const v = {
-    primary: 'bg-accent text-on-accent font-semibold hover:brightness-110',
+    primary: 'bg-primary text-on-primary font-semibold shadow-sm hover:brightness-110',
     ghost: 'text-ink/80 ring-1 ring-ink/15 hover:bg-ink/5',
     danger: 'text-red-500 ring-1 ring-red-500/30 hover:bg-red-500/10',
   }[variant];
   return (
     <button {...rest}
-      className={`rounded-lg px-3 py-2 text-sm transition disabled:cursor-not-allowed disabled:opacity-50 ${v} ${className}`} />
+      className={`min-h-10 rounded-lg px-4 py-2 text-sm transition disabled:cursor-not-allowed disabled:opacity-50 ${v} ${className}`} />
   );
 }
 
 export function Card({ title, children, right }: { title?: string; children: ReactNode; right?: ReactNode }) {
   return (
-    <section className="rounded-2xl bg-panel p-4 ring-1 ring-ink/10 sm:p-5">
+    <section className="relative rounded-2xl bg-panel p-4 shadow-sm ring-1 ring-ink/10 sm:p-5">
       {(title || right) && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           {title && <h2 className="text-sm font-semibold uppercase tracking-wider text-ink/60">{title}</h2>}
@@ -80,11 +80,11 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
   }, [onClose]);
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4" onMouseDown={onClose}>
-      <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-panel p-5 ring-1 ring-ink/10 sm:rounded-2xl"
+      <div className="pb-safe max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-panel p-5 ring-1 ring-ink/10 sm:rounded-2xl"
         onMouseDown={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold">{title}</h2>
-          <button onClick={onClose} aria-label="Close" className="rounded-md px-2 text-xl leading-none text-ink/50 hover:text-ink">×</button>
+          <button onClick={onClose} aria-label="Close" className="grid h-10 w-10 place-items-center rounded-full text-2xl leading-none text-ink/50 hover:bg-ink/5 hover:text-ink">×</button>
         </div>
         {children}
       </div>

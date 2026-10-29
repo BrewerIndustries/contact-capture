@@ -6,9 +6,7 @@ and sees one shared report. Every entry records who captured it and who last edi
 - **Prod:** https://contacts.dabrewer.dev/ · API `https://contacts-api.dabrewer.dev`
 - **Dev:** https://contacts.dabrewer.dev/dev/ · API `https://contacts-api-dev.dabrewer.dev`
 
-> **Status (2026-10-29):** dev site + dev API live with events. The prod API runs the v1 code (no events,
-> migration 0002 not applied). `main` doesn't exist yet; it gets created by the first approved `dev → main`
-> PR. Until then the site root redirects to `/dev/`. At promotion: `npm run migrate:prod && npm run deploy`.
+> **Status (2026-10-29):** prod and dev are both live (sites + APIs, events included). Promote with a `dev → main` PR.
 
 ## Tabs
 

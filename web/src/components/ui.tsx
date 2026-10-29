@@ -80,7 +80,7 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
   }, [onClose]);
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4" onMouseDown={onClose}>
-      <div className="pb-safe max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-panel p-5 ring-1 ring-ink/10 sm:rounded-2xl"
+      <div className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-panel p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] ring-1 ring-ink/10 sm:rounded-2xl sm:pb-5"
         onMouseDown={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold">{title}</h2>

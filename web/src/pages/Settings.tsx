@@ -366,8 +366,8 @@ function InviteDialog({ onClose, onSent }: { onClose: () => void; onSent: (r: In
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-ink/60">Role</span>
           <select className={inputCls} value={role} onChange={(e) => setRole(e.target.value)}>
-            <option value="user">User: captures contacts, sees the report</option>
-            <option value="admin">Admin: also manages fields and users</option>
+            <option value="user">User: capture + report</option>
+            <option value="admin">Admin: also settings + users</option>
           </select>
         </label>
         <ErrorNote>{error}</ErrorNote>

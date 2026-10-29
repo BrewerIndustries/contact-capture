@@ -99,4 +99,7 @@ input[type="checkbox"] { accent-color: var(--accent); }
   .drift-a, .drift-b, .flow, .flow-slow { animation: none; }
 }
 
-.pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+/* In the utilities layer so it never overrides a padding utility on the same element. */
+@layer utilities {
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+}

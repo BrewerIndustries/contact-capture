@@ -148,7 +148,7 @@ export default function Report() {
                 <th className="whitespace-nowrap px-3 py-2.5 font-semibold">Event</th>
                 <th className="whitespace-nowrap px-3 py-2.5 font-semibold">Captured by</th>
                 <th className="whitespace-nowrap px-3 py-2.5 font-semibold">Captured</th>
-                <th className="px-3 py-2.5" />
+                <th className="sticky right-0 bg-panel px-3 py-2.5 shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.15)]"><span className="sr-only">Actions</span></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-ink/10">
@@ -162,7 +162,7 @@ export default function Report() {
                   <td className="whitespace-nowrap px-3 py-2 text-ink/60" title={r.updated_at ? `Edited ${fmtDate(r.updated_at)} by ${personName(r.updated_by)}` : undefined}>
                     {fmtDate(r.created_at)}{r.updated_at && <span className="ml-1 text-xs text-ink/40">(edited)</span>}
                   </td>
-                  <td className="px-2 py-1.5"><ContactActions contact={r} fields={fields} onChanged={load} /></td>
+                  <td className="sticky right-0 bg-panel px-2 py-1.5 shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.15)]"><ContactActions contact={r} fields={fields} onChanged={load} /></td>
                 </tr>
               ))}
             </tbody>

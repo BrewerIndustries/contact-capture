@@ -1,0 +1,135 @@
+import { useEffect, useMemo, useState } from 'react';
+import { api, personName, type Contact, type Field } from '../lib/api';
+import ContactActions from '../components/ContactActions';
+import { Button, Card, ErrorNote, inputCls, fmtDate } from '../components/ui';
+
+const dayStart = (s: string) => (s ? new Date(`${s}T00:00:00`).getTime() : undefined);
+const dayEnd = (s: string) => (s ? new Date(`${s}T00:00:00`).getTime() + 86_400_000 : undefined);
+
+function cell(v: unknown): string {
+  if (v === true) return 'Yes';
+  if (v === false || v === undefined || v === null) return '';
+  return String(v);
+}
+
+function csvEscape(s: string) {
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+export default function Report() {
+  const [fields, setFields] = useState<Field[]>([]);
+  const [rows, setRows] = useState<Contact[] | null>(null);
+  const [people, setPeople] = useState<{ id: string; email: string; display_name: string | null }[]>([]);
+  const [q, setQ] = useState('');
+  const [by, setBy] = useState('');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const [error, setError] = useState('');
+
+  const load = () =>
+    api.contacts({ q: q.trim(), by, from: dayStart(from), to: dayEnd(to) })
+      .then((r) => { setRows(r); setError(''); })
+      .catch((e) => setError(e.message));
+
+  useEffect(() => {
+    api.fields().then((r) => setFields(r.fields)).catch((e) => setError(e.message));
+    api.capturers().then(setPeople).catch(() => {});
+  }, []);
+
+  // Re-query as filters change; the search box waits for a pause in typing.
+  useEffect(() => {
+    const t = setTimeout(load, q ? 300 : 0);
+    return () => clearTimeout(t);
+  }, [q, by, from, to]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Active fields first, then retired ones that still hold data in these rows.
+  const columns = useMemo(() => {
+    const has = (f: Field) => rows?.some((r) => r.data[f.id] !== undefined);
+    return [...fields.filter((f) => f.active), ...fields.filter((f) => !f.active && has(f))];
+  }, [fields, rows]);
+
+  function exportCsv() {
+    if (!rows) return;
+    const head = [...columns.map((f) => f.label + (f.active ? '' : ' (retired)')), 'Captured by', 'Captured by email', 'Captured at', 'Last edited by', 'Last edited at'];
+    const lines = rows.map((r) => [
+      ...columns.map((f) => cell(r.data[f.id])),
+      r.created_by.name || '', r.created_by.email || '',
+      new Date(r.created_at).toISOString(),
+      personName(r.updated_by), r.updated_at ? new Date(r.updated_at).toISOString() : '',
+    ]);
+    // BOM so Excel reads UTF-8 names correctly.
+    const csv = '﻿' + [head, ...lines].map((l) => l.map(csvEscape).join(',')).join('\r\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    a.download = `contacts-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  const filtered = q || by || from || to;
+
+  return (
+    <div className="space-y-4">
+      <Card title="Report" right={
+        <Button onClick={exportCsv} disabled={!rows?.length}>Export CSV{rows ? ` (${rows.length})` : ''}</Button>
+      }>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+          <input className={`${inputCls} lg:col-span-2`} placeholder="Search any field…" value={q} onChange={(e) => setQ(e.target.value)} />
+          <select className={`${inputCls} lg:col-span-2`} value={by} onChange={(e) => setBy(e.target.value)}>
+            <option value="">Captured by: anyone</option>
+            {people.map((p) => <option key={p.id} value={p.id}>{p.display_name || p.email}</option>)}
+          </select>
+          <div className="flex min-w-0 items-center gap-2 sm:col-span-2">
+            <input type="date" aria-label="From date" className={`${inputCls} min-w-0`} value={from} onChange={(e) => setFrom(e.target.value)} />
+            <span className="text-ink/40">–</span>
+            <input type="date" aria-label="To date" className={`${inputCls} min-w-0`} value={to} onChange={(e) => setTo(e.target.value)} />
+          </div>
+        </div>
+        {filtered && (
+          <button className="mt-2 text-xs text-ink/50 hover:text-ink" onClick={() => { setQ(''); setBy(''); setFrom(''); setTo(''); }}>
+            Clear filters
+          </button>
+        )}
+      </Card>
+
+      <ErrorNote>{error}</ErrorNote>
+
+      {!rows ? (
+        <p className="text-ink/40">Loading…</p>
+      ) : !rows.length ? (
+        <Card><p className="text-sm text-ink/50">{filtered ? 'Nothing matches those filters.' : 'No contacts captured yet.'}</p></Card>
+      ) : (
+        <div className="overflow-x-auto rounded-2xl bg-panel ring-1 ring-ink/10">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-ink/10 text-xs uppercase tracking-wider text-ink/50">
+              <tr>
+                {columns.map((f) => (
+                  <th key={f.id} className="whitespace-nowrap px-3 py-2.5 font-semibold">
+                    {f.label}{!f.active && <span className="ml-1 normal-case tracking-normal text-ink/40">(retired)</span>}
+                  </th>
+                ))}
+                <th className="whitespace-nowrap px-3 py-2.5 font-semibold">Captured by</th>
+                <th className="whitespace-nowrap px-3 py-2.5 font-semibold">Captured</th>
+                <th className="px-3 py-2.5" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-ink/10">
+              {rows.map((r) => (
+                <tr key={r.id} className="align-top hover:bg-ink/[0.03]">
+                  {columns.map((f) => (
+                    <td key={f.id} className="max-w-64 px-3 py-2 break-words">{cell(r.data[f.id])}</td>
+                  ))}
+                  <td className="whitespace-nowrap px-3 py-2">{personName(r.created_by)}</td>
+                  <td className="whitespace-nowrap px-3 py-2 text-ink/60" title={r.updated_at ? `Edited ${fmtDate(r.updated_at)} by ${personName(r.updated_by)}` : undefined}>
+                    {fmtDate(r.created_at)}{r.updated_at && <span className="ml-1 text-xs text-ink/40">(edited)</span>}
+                  </td>
+                  <td className="px-2 py-1.5"><ContactActions contact={r} fields={fields} onChanged={load} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}

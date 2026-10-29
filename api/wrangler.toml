@@ -1,0 +1,46 @@
+# Contact Capture API — Cloudflare Worker (prod = default env, dev = [env.dev]).
+# Secrets (per env, never in this file):
+#   wrangler secret put SESSION_SECRET            [--env dev]
+
+name = "contact-capture-api"
+main = "src/index.ts"
+compatibility_date = "2025-10-01"
+
+# ---------------- PROD (default) ----------------
+# custom_domain=true makes `wrangler deploy` create the DNS record + edge cert.
+routes = [
+  { pattern = "contacts-api.dabrewer.dev", custom_domain = true }
+]
+
+[vars]
+ALLOWED_ORIGIN = "https://contacts.dabrewer.dev"
+APP_URL = "https://contacts.dabrewer.dev/"
+MAIL_FROM = "contacts@dabrewer.dev"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "contact-capture-prod"
+database_id = "1241c46f-838d-4b1a-b196-46352db18018"
+
+[[send_email]]
+name = "EMAIL"
+
+# ---------------- DEV ----------------
+[env.dev]
+name = "contact-capture-api-dev"
+routes = [
+  { pattern = "contacts-api-dev.dabrewer.dev", custom_domain = true }
+]
+
+[env.dev.vars]
+ALLOWED_ORIGIN = "https://contacts.dabrewer.dev"
+APP_URL = "https://contacts.dabrewer.dev/dev/"
+MAIL_FROM = "contacts@dabrewer.dev"
+
+[[env.dev.d1_databases]]
+binding = "DB"
+database_name = "contact-capture-dev"
+database_id = "a5c31057-7731-43b1-aa51-36aebab90d77"
+
+[[env.dev.send_email]]
+name = "EMAIL"

@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+/* `ink` is the single foreground token: near-white in dark, near-black in light,
+   so every `ink/opacity` utility inverts with the theme. Light is the default here —
+   capture happens on phones in bright rooms. */
+@theme inline {
+  --color-ink: var(--ink);
+  --color-field: var(--field);
+  --color-accent: var(--accent);
+  --color-page: var(--page-bg);
+  --color-panel: var(--panel);
+  --color-on-accent: var(--on-accent);
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  color-scheme: light;
+  --ink: #0f1a24;
+  --field: #ffffff;
+  --accent: #0d9488;
+  --page-bg: #f3f6f9;
+  --panel: #ffffff;
+  --on-accent: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.theme-light) {
+    color-scheme: dark;
+    --ink: #e6edf3;
+    --field: rgba(0, 0, 0, 0.35);
+    --accent: #2dd4bf;
+    --page-bg: #0b1114;
+    --panel: #121a1f;
+  --on-accent: #04201d;
+  }
+}
+.theme-dark {
+  color-scheme: dark;
+  --ink: #e6edf3;
+  --field: rgba(0, 0, 0, 0.35);
+  --accent: #2dd4bf;
+  --page-bg: #0b1114;
+  --panel: #121a1f;
+  --on-accent: #04201d;
+}
+
+html, body {
+  margin: 0;
+  background: var(--page-bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+input[type="checkbox"] { accent-color: var(--accent); }

@@ -34,12 +34,29 @@ jobs:
           node-version: 20
 
       # ---------- PROD (main -> /) ----------
+      # Until main exists (it's created by the first approved dev -> main PR), the
+      # site root just redirects to /dev/.
+      - name: Check for main
+        id: main
+        run: |
+          if git ls-remote --exit-code --heads "https://github.com/${{ github.repository }}" main >/dev/null; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Placeholder root (no main yet)
+        if: steps.main.outputs.exists != 'true'
+        run: |
+          mkdir -p _site
+          printf '<!doctype html><meta http-equiv="refresh" content="0; url=/dev/"><title>Contact Capture</title><a href="/dev/">Contact Capture (dev)</a>\n' > _site/index.html
       - name: Checkout main (prod)
+        if: steps.main.outputs.exists == 'true'
         uses: actions/checkout@v4
         with:
           ref: main
           path: prod-src
       - name: Build prod
+        if: steps.main.outputs.exists == 'true'
         working-directory: prod-src/web
         env:
           BASE_PATH: /
@@ -48,6 +65,7 @@ jobs:
           npm install
           npm run build
       - name: Assemble prod into site root
+        if: steps.main.outputs.exists == 'true'
         run: |
           mkdir -p _site
           cp -r prod-src/web/dist/. _site/

@@ -125,7 +125,7 @@ export default function Report() {
                   {rest.filter((f) => cell(r.data[f.id])).map((f) => (
                     <div key={f.id} className="flex gap-2">
                       <dt className="w-28 shrink-0 text-ink/50">{f.label}</dt>
-                      <dd className="min-w-0 break-words">{cell(r.data[f.id])}</dd>
+                      <dd className="min-w-0 whitespace-pre-line break-words">{cell(r.data[f.id])}</dd>
                     </div>
                   ))}
                 </dl>
@@ -155,7 +155,7 @@ export default function Report() {
               {rows.map((r) => (
                 <tr key={r.id} className="align-top hover:bg-ink/[0.03]">
                   {columns.map((f) => (
-                    <td key={f.id} className="max-w-64 px-3 py-2 break-words">{cell(r.data[f.id])}</td>
+                    <td key={f.id} className="max-w-64 whitespace-pre-line px-3 py-2 break-words">{cell(r.data[f.id])}</td>
                   ))}
                   <td className="whitespace-nowrap px-3 py-2">{r.event?.name || ''}</td>
                   <td className="whitespace-nowrap px-3 py-2">{personName(r.created_by)}</td>

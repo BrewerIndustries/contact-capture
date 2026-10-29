@@ -26,7 +26,7 @@ On phones there's a bottom tab bar, the Report shows cards instead of a table, a
 
 ## Rules worth knowing
 
-- **Fields.** Base fields are Name, Email, Role, Organization. Types: text, email, phone, long text, dropdown,
+- **Fields.** Base fields are Name, Email, Role, Organization, Notes (long text, added in migration 0003). Types: text, email, phone, long text, dropdown,
   checkbox, date, number. **Hiding** a field drops it from the form but keeps its data, which the report
   shows as "(retired)". A field can only be **deleted** while it holds no data.
 - **Events.** Admins add, rename, archive or delete events and pick the **default**. Each user has a current event:
